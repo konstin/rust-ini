@@ -154,9 +154,29 @@ impl EscapePolicy {
 // * `\=` Equals sign
 // * `\:` Colon
 // * `\x????` Unicode character with hexadecimal code point corresponding to ????
+#[cfg(test)]
 fn escape_str(s: &str, policy: EscapePolicy) -> String {
+    escape_str_multiline(s, policy, false)
+}
+
+fn escape_str_multiline(s: &str, policy: EscapePolicy, multiline_indent: bool) -> String {
     let mut escaped: String = String::with_capacity(s.len());
+    let mut indent = false;
+
     for c in s.chars() {
+        // Handle indentation for multiline
+        // tab should be inserted before the nex char after the
+        // line break
+        if indent {
+            escaped.push('\t');
+            indent = false;
+        }
+
+        if multiline_indent && c == '\n' {
+            escaped.push(c);
+            indent = true;
+            continue
+        }
         // if we know this is not something to escape as per policy, we just
         // write it and continue.
         if !policy.should_escape(c) {
@@ -299,6 +319,9 @@ pub struct WriteOption {
 
     /// Key value separator
     pub kv_separator: &'static str,
+
+    /// Span multiline values across lines
+    pub indent_multiline_value: bool,
 }
 
 impl Default for WriteOption {
@@ -307,6 +330,7 @@ impl Default for WriteOption {
             escape_policy: EscapePolicy::Basics,
             line_separator: LineSeparator::SystemDefault,
             kv_separator: DEFAULT_KV_SEPARATOR,
+            indent_multiline_value: false,
         }
     }
 }
@@ -973,13 +997,13 @@ impl Ini {
                 write!(
                     writer,
                     "[{}]{}",
-                    escape_str(&section[..], opt.escape_policy),
+                    escape_str_multiline(&section[..], opt.escape_policy, opt.indent_multiline_value),
                     opt.line_separator
                 )?;
             }
             for (k, v) in props.iter() {
-                let k_str = escape_str(k, opt.escape_policy);
-                let v_str = escape_str(v, opt.escape_policy);
+                let k_str = escape_str_multiline(k, opt.escape_policy, opt.indent_multiline_value);
+                let v_str = escape_str_multiline(v, opt.escape_policy, opt.indent_multiline_value);
                 write!(writer, "{}{}{}{}", k_str, opt.kv_separator, v_str, opt.line_separator)?;
             }
         }
@@ -3263,5 +3287,47 @@ key1=value1
 
         let ini = Ini::load_from_str(content_str).unwrap();
         assert_eq!(ini.get_from(Some("Test"), "Key"), Some("Value"));
+    }
+
+    #[test]
+    fn write_multiline_value() {
+        let multi = "lorem ipsum\ndolor sit amet,\n\nconsectetur adipiscing elit.\n";
+
+        let mut ini = Ini::new();
+        ini.set_to(Some("test"), "key".to_string(), multi.to_string());
+        
+        let mut buf = Vec::new();
+        let opt = WriteOption { indent_multiline_value: true, ..Default::default() };
+
+        ini.write_to_opt(&mut buf, opt).unwrap();
+
+        let expected = if cfg!(windows) {
+            concat!(
+                "[test]\r\n",
+                "key=lorem ipsum\n",
+                "\tdolor sit amet,\n",
+                "\t\n",
+                "\tconsectetur adipiscing elit.\n\r\n",
+            )
+        } else {
+            concat!(
+                "[test]\n",
+                "key=lorem ipsum\n",
+                "\tdolor sit amet,\n",
+                "\t\n",
+                "\tconsectetur adipiscing elit.\n\n",
+            )
+        };
+
+        assert_eq!(str::from_utf8(&buf).unwrap(), expected);
+
+        let ini = Ini::load_from_str_opt(
+            expected,
+            ParseOption { enabled_indented_multiline_value: true, ..Default::default() },
+        ).unwrap();
+
+        // The last \n will be eaten but that's ok
+        let value = ini.get_from(Some("test"), "key").unwrap();
+        assert_eq!(format!("{}\n", value), multi);
     }
 }
