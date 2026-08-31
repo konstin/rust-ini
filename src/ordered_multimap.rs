@@ -196,7 +196,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         removed.into_iter().next()
     }
 
-    pub(crate) fn remove_all<KeyQuery>(&mut self, key: &KeyQuery) -> impl DoubleEndedIterator<Item = Value> + '_
+    pub(crate) fn remove_all<KeyQuery>(&mut self, key: &KeyQuery) -> std::vec::IntoIter<Value>
     where
         Key: PartialEq<KeyQuery>,
         KeyQuery: ?Sized,
