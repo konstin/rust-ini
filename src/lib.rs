@@ -44,8 +44,7 @@
 
 use std::{
     borrow::Cow,
-    char,
-    error,
+    char, error,
     fmt::{self, Display},
     fs::{File, OpenOptions},
     io::{self, Read, Write},
@@ -173,7 +172,7 @@ fn escape_str_multiline(s: &str, policy: EscapePolicy, multiline_indent: bool) -
         if multiline_indent && c == '\n' {
             escaped.push(c);
             indent = true;
-            continue
+            continue;
         }
         // if we know this is not something to escape as per policy, we just
         // write it and continue.
@@ -461,7 +460,7 @@ impl Properties {
 
     /// Get the number of the properties
     pub fn len(&self) -> usize {
-        self.data.keys_len()
+        self.data.keys().len()
     }
 
     /// Check if properties has 0 elements
@@ -666,7 +665,7 @@ impl<'a> SectionOccupiedEntry<'a> {
     pub fn into_mut(self) -> &'a mut Properties {
         self.sections
             .first_mut_at(self.key_index)
-            .expect("occupied section should have a value")
+            .expect("occupied section has a value")
     }
 
     /// Append a new section
@@ -677,7 +676,7 @@ impl<'a> SectionOccupiedEntry<'a> {
     fn last_mut(&'a mut self) -> &'a mut Properties {
         self.sections
             .last_mut_at(self.key_index)
-            .expect("occupied section should have a value")
+            .expect("occupied section has a value")
     }
 }
 
@@ -873,7 +872,7 @@ impl Ini {
 
     /// Total sections count
     pub fn len(&self) -> usize {
-        self.sections.keys_len()
+        self.sections.keys().len()
     }
 
     /// Check if object contains no section
@@ -3008,7 +3007,7 @@ bar =
 
 baz = w
   x # intentional trailing whitespace below
-   y 
+   y
 
  z #2
 bla = a
@@ -3041,7 +3040,7 @@ bla = a
     fn whitespace_inside_quoted_value_should_not_be_trimed() {
         let input = r#"
 [Foo]
-Key=   "  quoted with whitespace "  
+Key=   "  quoted with whitespace "
         "#;
 
         let opt = Ini::load_from_str_opt(
@@ -3305,9 +3304,12 @@ key1=value1
 
         let mut ini = Ini::new();
         ini.set_to(Some("test"), "key".to_string(), multi.to_string());
-        
+
         let mut buf = Vec::new();
-        let opt = WriteOption { indent_multiline_value: true, ..Default::default() };
+        let opt = WriteOption {
+            indent_multiline_value: true,
+            ..Default::default()
+        };
 
         ini.write_to_opt(&mut buf, opt).unwrap();
 
@@ -3333,8 +3335,12 @@ key1=value1
 
         let ini = Ini::load_from_str_opt(
             expected,
-            ParseOption { enabled_indented_multiline_value: true, ..Default::default() },
-        ).unwrap();
+            ParseOption {
+                enabled_indented_multiline_value: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
         // The last \n will be eaten but that's ok
         let value = ini.get_from(Some("test"), "key").unwrap();

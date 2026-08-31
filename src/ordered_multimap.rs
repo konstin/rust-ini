@@ -1,7 +1,7 @@
-//! A small insertion-ordered multimap containing only the operations used by this crate.
+//! An insertion-ordered multimap.
 //!
 //! `keys` stores each distinct key in first-insertion order. `values` stores key indexes and
-//! values in value-insertion order. A key index is valid for every entry in `values`.
+//! values in value-insertion order.
 
 #[derive(Clone, Default)]
 pub(crate) struct OrderedMultimap<Key, Value> {
@@ -33,19 +33,14 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         }
     }
 
-    pub(crate) fn keys(&self) -> impl DoubleEndedIterator<Item = &Key> {
+    pub(crate) fn keys(&self) -> impl DoubleEndedIterator<Item = &Key> + ExactSizeIterator + '_ {
         self.keys.iter()
-    }
-
-    pub(crate) fn keys_len(&self) -> usize {
-        self.keys.len()
     }
 
     pub(crate) fn push_new(&mut self, key: Key, value: Value) -> &mut Value {
         let key_index = self.keys.len();
         self.keys.push(key);
-        self.values.push((key_index, value));
-        &mut self.values.last_mut().expect("inserted value should exist").1
+        &mut self.values.push_mut((key_index, value)).1
     }
 
     pub(crate) fn append_at(&mut self, key_index: usize, value: Value) {
@@ -77,6 +72,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
 
     fn remove_values(&mut self, key_index: usize) -> Vec<Value> {
         let mut removed = Vec::new();
+        // Avoid repeated moves by pushing to a new `Vec` instead.
         let mut retained = Vec::with_capacity(self.values.len());
 
         for (entry_key_index, value) in std::mem::take(&mut self.values) {
@@ -134,6 +130,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         }
     }
 
+    /// Get the first value associated with the key
     pub(crate) fn get<KeyQuery>(&self, key: &KeyQuery) -> Option<&Value>
     where
         Key: PartialEq<KeyQuery>,
@@ -146,6 +143,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
             .map(|(_, value)| value)
     }
 
+    /// Get a mutable reference to the first value associated with the key
     pub(crate) fn get_mut<KeyQuery>(&mut self, key: &KeyQuery) -> Option<&mut Value>
     where
         Key: PartialEq<KeyQuery>,
@@ -186,6 +184,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
             .map(|(_, value)| value)
     }
 
+    /// Remove all values associated with the key and return the first one
     pub(crate) fn remove<KeyQuery>(&mut self, key: &KeyQuery) -> Option<Value>
     where
         Key: PartialEq<KeyQuery>,
@@ -197,7 +196,7 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         removed.into_iter().next()
     }
 
-    pub(crate) fn remove_all<KeyQuery>(&mut self, key: &KeyQuery) -> std::vec::IntoIter<Value>
+    pub(crate) fn remove_all<KeyQuery>(&mut self, key: &KeyQuery) -> impl DoubleEndedIterator<Item = Value> + '_
     where
         Key: PartialEq<KeyQuery>,
         KeyQuery: ?Sized,
