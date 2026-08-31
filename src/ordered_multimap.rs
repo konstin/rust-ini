@@ -55,7 +55,8 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
     pub(crate) fn first_mut_at(&mut self, key_index: usize) -> Option<&mut Value> {
         self.values
             .iter_mut()
-            .find_map(|(entry_key_index, value)| (*entry_key_index == key_index).then_some(value))
+            .find(|(entry_key_index, _)| *entry_key_index == key_index)
+            .map(|(_, value)| value)
     }
 
     pub(crate) fn last_mut_at(&mut self, key_index: usize) -> Option<&mut Value> {
@@ -141,7 +142,8 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         let key_index = self.position_key(key)?;
         self.values
             .iter()
-            .find_map(|(entry_key_index, value)| (*entry_key_index == key_index).then_some(value))
+            .find(|(entry_key_index, _)| *entry_key_index == key_index)
+            .map(|(_, value)| value)
     }
 
     pub(crate) fn get_mut<KeyQuery>(&mut self, key: &KeyQuery) -> Option<&mut Value>
@@ -152,7 +154,8 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         let key_index = self.position_key(key)?;
         self.values
             .iter_mut()
-            .find_map(|(entry_key_index, value)| (*entry_key_index == key_index).then_some(value))
+            .find(|(entry_key_index, _)| *entry_key_index == key_index)
+            .map(|(_, value)| value)
     }
 
     pub(crate) fn get_all<KeyQuery>(&self, key: &KeyQuery) -> impl DoubleEndedIterator<Item = &Value> + '_
@@ -167,7 +170,8 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
     pub(crate) fn get_all_at(&self, key_index: Option<usize>) -> impl DoubleEndedIterator<Item = &Value> + '_ {
         self.values
             .iter()
-            .filter_map(move |(entry_key_index, value)| (Some(*entry_key_index) == key_index).then_some(value))
+            .filter(move |(entry_key_index, _)| Some(*entry_key_index) == key_index)
+            .map(|(_, value)| value)
     }
 
     pub(crate) fn get_all_mut<KeyQuery>(&mut self, key: &KeyQuery) -> impl DoubleEndedIterator<Item = &mut Value> + '_
@@ -178,7 +182,8 @@ impl<Key, Value> OrderedMultimap<Key, Value> {
         let key_index = self.position_key(key);
         self.values
             .iter_mut()
-            .filter_map(move |(entry_key_index, value)| (Some(*entry_key_index) == key_index).then_some(value))
+            .filter(move |(entry_key_index, _)| Some(*entry_key_index) == key_index)
+            .map(|(_, value)| value)
     }
 
     pub(crate) fn remove<KeyQuery>(&mut self, key: &KeyQuery) -> Option<Value>
